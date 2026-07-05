@@ -21,7 +21,9 @@ import { useAppTheme } from '@/contexts/theme-context';
 
 const SPACE_ID = process.env.EXPO_PUBLIC_CONTENTFUL_SPACE_ID || '5znos412atyf';
 const ENVIRONMENT_ID = process.env.EXPO_PUBLIC_CONTENTFUL_ENV || 'Dejen';
-const ACCESS_TOKEN = process.env.EXPO_PUBLIC_CONTENTFUL_CDA_TOKEN;
+const ACCESS_TOKEN =
+  process.env.EXPO_PUBLIC_CONTENTFUL_CDA_TOKEN ||
+  'agiwsOim7_UIbVYdtu10zP0n8p3Odo-v-HrQradFLEc';
 
 type NewsItem = {
   id: string;
