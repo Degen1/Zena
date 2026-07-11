@@ -33,6 +33,30 @@ type NewsItem = {
   url: string;
 };
 
+const FALLBACK_NEWS_ITEMS: NewsItem[] = [
+  {
+    id: 'fallback-bbc-tigrinya',
+    title: 'BBC News ትግርኛ',
+    description: 'Latest Tigrinya news from BBC News.',
+    imageUrl: null,
+    url: 'https://www.bbc.com/tigrinya',
+  },
+  {
+    id: 'fallback-voa-tigrigna',
+    title: 'VOA Tigrigna',
+    description: 'News, audio, and video coverage in Tigrigna.',
+    imageUrl: null,
+    url: 'https://tigrigna.voanews.com/',
+  },
+  {
+    id: 'fallback-sbs-tigrinya',
+    title: 'SBS Tigrinya',
+    description: 'Tigrinya programs and current affairs from SBS.',
+    imageUrl: null,
+    url: 'https://www.sbs.com.au/language/tigrinya',
+  },
+];
+
 type ArticleCollectionResponse = {
   data?: {
     articleCollection?: {
@@ -96,16 +120,16 @@ export default function HomeScreen() {
       if (data.errors?.length) {
         throw new Error(data.errors[0].message || 'Contentful GraphQL error.');
       }
-      setItems(
-        (data.data?.articleCollection?.items ?? []).map((article) => ({
+      const fetchedItems = (data.data?.articleCollection?.items ?? []).map((article) => ({
           id: article.sys.id,
           title: article.title || 'Untitled',
           description: article.article || '',
           imageUrl: article.imageCollection?.items?.[0]?.url || null,
           url: article.url || '',
-        }))
-      );
+        }));
+      setItems(fetchedItems.length ? fetchedItems : FALLBACK_NEWS_ITEMS);
     } catch (caught) {
+      setItems(FALLBACK_NEWS_ITEMS);
       setError(caught instanceof Error ? caught.message : 'Unable to load news.');
     } finally {
       setLoading(false);
@@ -183,7 +207,14 @@ export default function HomeScreen() {
             accessibilityLabel={`Open ${item.title}`}
             disabled={!item.url}
             onPress={() =>
-              router.push({ pathname: '/web-viewer', params: { url: item.url } })
+              router.push({
+                pathname: '/web-viewer',
+                params: {
+                  description: item.description,
+                  title: item.title,
+                  url: item.url,
+                },
+              })
             }
             style={styles.card}>
             {item.imageUrl ? (
@@ -207,7 +238,7 @@ export default function HomeScreen() {
             ) : (
               <>
                 <Text style={[styles.stateTitle, { color: theme.text }]}>
-                  {error ? 'News could not be loaded' : 'No news found'}
+                  {error ? 'News sources are available while the feed refreshes.' : 'No news found'}
                 </Text>
                 {error ? (
                   <Pressable onPress={loadNews} style={styles.retryButton}>
