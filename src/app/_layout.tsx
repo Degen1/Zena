@@ -3,6 +3,7 @@ import * as SplashScreen from 'expo-splash-screen';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AppThemeProvider, useAppTheme } from '@/contexts/theme-context';
+import { useFirebaseMessaging } from '../lib/firebase-messaging';
 SplashScreen.preventAutoHideAsync();
 
 export default function TabLayout() {
@@ -15,6 +16,8 @@ export default function TabLayout() {
 
 function RootNavigator() {
   const { colorScheme } = useAppTheme();
+  useFirebaseMessaging();
+
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AnimatedSplashOverlay />
