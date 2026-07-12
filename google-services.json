@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1093050183833",
+    "project_id": "zena-e508c",
+    "storage_bucket": "zena-e508c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1093050183833:android:089a3eeb4b91b697424808",
+        "android_client_info": {
+          "package_name": "com.degengebre.Zena"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDf0WjoVxSwowpxj0ZgkCpNgHfUS9O1Pg8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
