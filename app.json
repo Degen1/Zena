@@ -9,21 +9,13 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.degengebre.Zena",
-      "googleServicesFile": "./GoogleService-Info.plist",
       "icon": "./assets/images/icon.png",
-      "entitlements": {
-        "aps-environment": "development"
-      },
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false,
-        "UIBackgroundModes": [
-          "remote-notification"
-        ]
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.degengebre.Zena",
-      "googleServicesFile": "./google-services.json",
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {
         "backgroundColor": "#1274C2",
@@ -37,9 +29,6 @@
     },
     "plugins": [
       "expo-router",
-      "@react-native-firebase/app",
-      "@react-native-firebase/auth",
-      "@react-native-firebase/messaging",
       [
         "react-native-google-mobile-ads",
         {
@@ -59,14 +48,7 @@
         "expo-build-properties",
         {
           "ios": {
-            "useFrameworks": "static",
-            "forceStaticLinking": [
-              "RNFBApp",
-              "RNFBAuth",
-              "RNFBFirestore",
-              "RNFBMessaging",
-              "RNFBStorage"
-            ]
+            "useFrameworks": "static"
           }
         }
       ]
