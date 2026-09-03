@@ -24,6 +24,7 @@ const ENVIRONMENT_ID = process.env.EXPO_PUBLIC_CONTENTFUL_ENV || 'Dejen';
 const ACCESS_TOKEN =
   process.env.EXPO_PUBLIC_CONTENTFUL_CDA_TOKEN ||
   'agiwsOim7_UIbVYdtu10zP0n8p3Odo-v-HrQradFLEc';
+const PAGE_SIZE = 20;
 
 type NewsItem = {
   id: string;
@@ -60,16 +61,17 @@ const FALLBACK_NEWS_ITEMS: NewsItem[] = [
 type ArticleCollectionResponse = {
   data?: {
     articleCollection?: {
-      items?: Array<{
+      total?: number;
+      items?: {
         sys: { id: string; firstPublishedAt?: string };
         title?: string;
         article?: string;
         url?: string;
-        imageCollection?: { items?: Array<{ url?: string }> };
-      }>;
+        imageCollection?: { items?: { url?: string }[] };
+      }[];
     };
   };
-  errors?: Array<{ message?: string }>;
+  errors?: { message?: string }[];
 };
 
 export default function HomeScreen() {
@@ -78,19 +80,32 @@ export default function HomeScreen() {
   const theme = Colors[colorScheme];
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<NewsItem[]>([]);
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
-  const loadNews = useCallback(async () => {
+  const loadNews = useCallback(async (pageToLoad = 0, append = false) => {
+    // Keep the initial effect asynchronous before updating React state.
+    await Promise.resolve();
+
     if (!SPACE_ID || !ACCESS_TOKEN) {
       setError('Contentful configuration is missing.');
       setLoading(false);
+      setLoadingMore(false);
       return;
     }
 
     try {
-      setError(null);
+      if (append) {
+        setLoadMoreError(null);
+      } else {
+        setError(null);
+        setLoadMoreError(null);
+      }
       const response = await fetch(
         `https://graphql.contentful.com/content/v1/spaces/${SPACE_ID}/environments/${ENVIRONMENT_ID}`,
         {
@@ -100,8 +115,9 @@ export default function HomeScreen() {
             Authorization: `Bearer ${ACCESS_TOKEN}`,
           },
           body: JSON.stringify({
-            query: `query {
-              articleCollection(order: sys_firstPublishedAt_DESC, limit: 100) {
+            query: `query PaginatedArticles($limit: Int!, $skip: Int!) {
+              articleCollection(order: sys_firstPublishedAt_DESC, limit: $limit, skip: $skip) {
+                total
                 items {
                   sys { id firstPublishedAt }
                   title
@@ -111,6 +127,10 @@ export default function HomeScreen() {
                 }
               }
             }`,
+            variables: {
+              limit: PAGE_SIZE,
+              skip: pageToLoad * PAGE_SIZE,
+            },
           }),
         }
       );
@@ -127,18 +147,39 @@ export default function HomeScreen() {
           imageUrl: article.imageCollection?.items?.[0]?.url || null,
           url: article.url || '',
         }));
-      setItems(fetchedItems.length ? fetchedItems : FALLBACK_NEWS_ITEMS);
+      if (append) {
+        setItems((currentItems) => {
+          const existingIds = new Set(currentItems.map((item) => item.id));
+          return [...currentItems, ...fetchedItems.filter((item) => !existingIds.has(item.id))];
+        });
+      } else {
+        setItems(fetchedItems.length ? fetchedItems : FALLBACK_NEWS_ITEMS);
+      }
+      setPage(pageToLoad);
+      setTotal(data.data?.articleCollection?.total ?? fetchedItems.length);
     } catch (caught) {
-      setItems(FALLBACK_NEWS_ITEMS);
-      setError(caught instanceof Error ? caught.message : 'Unable to load news.');
+      const message = caught instanceof Error ? caught.message : 'Unable to load news.';
+      if (append) {
+        setLoadMoreError(message);
+      } else {
+        setItems(FALLBACK_NEWS_ITEMS);
+        setPage(0);
+        setTotal(FALLBACK_NEWS_ITEMS.length);
+        setError(message);
+      }
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    loadNews();
+    const timeout = setTimeout(() => {
+      void loadNews();
+    }, 0);
+
+    return () => clearTimeout(timeout);
   }, [loadNews]);
 
   const filteredItems = useMemo(() => {
@@ -164,7 +205,7 @@ export default function HomeScreen() {
             refreshing={refreshing}
             onRefresh={() => {
               setRefreshing(true);
-              loadNews();
+              void loadNews();
             }}
             tintColor={theme.text}
           />
@@ -205,12 +246,12 @@ export default function HomeScreen() {
           <Pressable
             accessibilityRole="link"
             accessibilityLabel={`Open ${item.title}`}
-            disabled={!item.url}
             onPress={() =>
               router.push({
                 pathname: '/web-viewer',
                 params: {
                   description: item.description,
+                  imageUrl: item.imageUrl || '',
                   title: item.title,
                   url: item.url,
                 },
@@ -241,13 +282,38 @@ export default function HomeScreen() {
                   {error ? 'News sources are available while the feed refreshes.' : 'No news found'}
                 </Text>
                 {error ? (
-                  <Pressable onPress={loadNews} style={styles.retryButton}>
+                  <Pressable onPress={() => void loadNews()} style={styles.retryButton}>
                     <Text style={styles.retryText}>Try again</Text>
                   </Pressable>
                 ) : null}
               </>
             )}
           </View>
+        }
+        ListFooterComponent={
+          !error && items.length < total ? (
+            <View style={styles.continueContainer}>
+              {loadMoreError ? (
+                <Text style={[styles.loadMoreError, { color: theme.textSecondary }]}>
+                  Could not load more stories. Please try again.
+                </Text>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                disabled={loadingMore}
+                onPress={() => {
+                  setLoadingMore(true);
+                  void loadNews(page + 1, true);
+                }}
+                style={[styles.continueButton, loadingMore && styles.continueButtonDisabled]}>
+                {loadingMore ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.continueButtonText}>ቀጽል</Text>
+                )}
+              </Pressable>
+            </View>
+          ) : null
         }
       />
     </SafeAreaView>
@@ -286,4 +352,20 @@ const styles = StyleSheet.create({
   stateTitle: { fontSize: 15, textAlign: 'center' },
   retryButton: { backgroundColor: '#007AFF', borderRadius: 10, marginTop: 14, paddingHorizontal: 16, paddingVertical: 10 },
   retryText: { color: '#fff', fontWeight: '700' },
+  continueContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 28,
+  },
+  continueButton: {
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    width: '100%',
+  },
+  continueButtonDisabled: { opacity: 0.6 },
+  continueButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  loadMoreError: { fontSize: 14, marginBottom: 12, textAlign: 'center' },
 });
